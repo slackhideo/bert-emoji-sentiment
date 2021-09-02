@@ -1,0 +1,5 @@
+# Requirements for the sentiment analysis code
+pytorch
+scikit-learn
+transformers == 3.*
+flask
