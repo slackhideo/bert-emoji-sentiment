@@ -29,3 +29,9 @@ def classify():
     """Classify the sentiment of 'text', either in GET or POST requests."""
     text = request.values.get("text")
     return classifier.classify(text)
+
+@app.route("/classify_multiple", methods=["GET", "POST"])
+def classify_multiple():
+    """Classify the sentiment of multiple texts in a JSON list, either in GET or POST requests."""
+    texts = request.values.get("texts")
+    return classifier.classify_multiple(texts)

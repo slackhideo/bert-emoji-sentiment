@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import time
 import logging
 from typing import Callable, Dict
@@ -62,22 +63,10 @@ class Classifier:
             no_cuda=False
         )
 
-        #def simple_accuracy(preds, labels):
-        #    return (preds == labels).mean()
-
-        def build_compute_metrics_fn() -> Callable[[EvalPrediction], Dict]:
-            def compute_metrics_fn(p: EvalPrediction):
-                preds = np.argmax(p.predictions, axis=1)
-                assert len(preds) == len(p.label_ids)
-                return {"acc": accuracy_score(p.label_ids, preds), "f1": f1_score(p.label_ids, preds, average="macro")}
-            return compute_metrics_fn
-
         trainer = Trainer(
             model=self.model,
-            args=training_args,
-            compute_metrics=build_compute_metrics_fn()
+            args=training_args
         )
-
 
         start_time = time.time()
 
@@ -93,8 +82,8 @@ class Classifier:
             label = label_list[predictions[0]]
             logger.info("***** Test result *****")
             logger.info("Input: %s", text)
-            logger.info(label)
-            logger.info(probabilities)
+            logger.info("Label: %s", label)
+            logger.info("Probs: %s", probabilities)
 
         logger.info(f"--- Final time: {time.time() - start_time} seconds ---")
 
@@ -102,8 +91,13 @@ class Classifier:
 
 
     def classify_multiple(self, texts: str):
-        input_strings = []
-        input_strings.append(text)
+        try:
+            input_strings = json.loads(texts)
+        except TypeError:
+            return "Parameter 'texts' must be a valid JSON string!"
+        except json.JSONDecodeError:
+            return "Invalid input JSON!"
+
         test_dataset = InputDataset(None, input_strings, self.tokenizer, mode="test", max_seq_length=MAX_SEQ_LENGTH)
 
         training_args = TrainingArguments(
@@ -112,26 +106,10 @@ class Classifier:
             no_cuda=False
         )
 
-        #def simple_accuracy(preds, labels):
-        #  return (preds == labels).mean()
-
-        def build_compute_metrics_fn() -> Callable[[EvalPrediction], Dict]:
-            def compute_metrics_fn(p: EvalPrediction):
-                preds = np.argmax(p.predictions, axis=1)
-                assert len(preds) == len(p.label_ids)
-                return {"acc": accuracy_score(p.label_ids, preds), "f1": f1_score(p.label_ids, preds, average="macro")}
-            return compute_metrics_fn
-
         trainer = Trainer(
             model=self.model,
-            args=training_args,
-            compute_metrics=build_compute_metrics_fn()
+            args=training_args
         )
-
-
-
-        import os
-        import json
 
         start_time = time.time()
 
@@ -142,25 +120,18 @@ class Classifier:
         probabilities = torch.nn.functional.softmax(torch.from_numpy(predictions), dim=-1)
         predictions   = np.argmax(predictions, axis=-1)
         label_list    = test_dataset.get_labels()
-        output_test_file = os.path.join(OUTPUT_DIR, "classification_results.tsv")
-        output_test_json = os.path.join(OUTPUT_DIR, "classification_probabilities.json")
 
         if trainer.is_world_master():
           logger.info("***** Test results *****")
-          logger.info(pred_result.metrics)
-          with open(output_test_file, "w") as writer:
-            writer.write("index\tprediction\ttext\n")
-            for idx, pred in enumerate(predictions):
-              pred = label_list[pred]
-              writer.write(f"{idx}\t{pred}\t{self.tokenizer.decode(test_dataset[idx].input_ids, True, True)}\n")
-
           predict_results = []
-          for probs in probabilities:
-            predict_results.append([float(x) for x in torch.flatten(probs)])
-
-          with open(output_test_json, "w") as fp:
-            json.dump(predict_results, fp, indent=4)
+          for idx, pred in enumerate(predictions):
+            label = label_list[pred]
+            predict_results.append(label)
+            logger.info("Input: %s", input_strings[idx])
+            logger.info("Label: %s", label)
+            logger.info("Probs: %s", probabilities[idx])
+            logger.info("***************")
 
         logger.info(f"--- Final time: {time.time() - start_time} seconds ---")
 
-        return predictions
+        return json.dumps(predict_results)
