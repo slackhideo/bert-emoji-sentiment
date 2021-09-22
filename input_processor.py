@@ -21,6 +21,7 @@ from typing import List, Tuple
 
 from transformers import DataProcessor, set_seed
 
+import config
 from utils import InputExample
 
 
@@ -32,9 +33,17 @@ set_seed(42)
 class InputProcessor(DataProcessor):
   """Processor for the input texts."""
 
+  def get_train_examples(self, data_dir):
+    """Get a collection of `InputExample`s for the train set."""
+    return self._create_examples(os.path.join(data_dir, config.TRAIN_FILE), "train")
+
+  def get_dev_examples(self, data_dir):
+    """Get a collection of `InputExample`s for the dev set."""
+    return self._create_examples(os.path.join(data_dir, config.DEV_FILE), "dev")
+
   def get_test_examples(self, data_dir):
     """Get a collection of `InputExample`s for prediction."""
-    return self._create_examples(os.path.join(data_dir, "emoji100.csv"), "test")
+    return self._create_examples(os.path.join(data_dir, config.TEST_FILE), "test")
 
   def get_test_examples_from_strings(self, input_strings: List[str]) -> List[InputExample]:
     """Get a collection of `InputExample`s for prediction."""
@@ -44,22 +53,24 @@ class InputProcessor(DataProcessor):
     """Get the list of labels for this data set."""
     return ["-1", "0", "1"]
 
-  def _create_examples(self, input_file, set_type):
+  def _create_examples(self, input_file: str, set_type: str):
     """Create examples for the training, dev, and test sets."""
+
     examples = []
+
     with open(input_file, "r") as f:
       reader = csv.reader(f, delimiter="\t", quoting=csv.QUOTE_ALL)
       next(reader, None)
+
       for i, line in enumerate(reader):
-        guid="{0}-{1}".format(set_type, str(i))
-        text_a = line[2].replace('""', '"').replace('\\"', '"')
-        label = line[1]
-        extra = None
+        guid    = "{0}-{1}".format(set_type, str(i))
+        text_a  = line[2].replace('""', '"').replace('\\"', '"')
+        label   = line[1]
+        extra   = None
         data_id = None #int(line[0])
 
         if process_emoji:
           text_a, extra = self._split_text_emoji(text_a)
-          print(text_a, "|", extra)
           examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, extra=extra, data_id=data_id, label=label))
         else:
           examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, data_id=data_id, label=label))

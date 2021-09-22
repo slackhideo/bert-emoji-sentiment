@@ -25,17 +25,10 @@ import numpy as np
 from sklearn.metrics import accuracy_score, f1_score
 from transformers import BertConfig, BertTokenizer, EvalPrediction, TrainingArguments
 
+import config
 from bert_emoji import BertEmojiClassification
 from input_dataset import InputDataset
 from trainer import Trainer
-
-
-# Parameters of the classifier
-MODEL = "bertimbau_ttsbr"
-MAX_SEQ_LENGTH = 128
-BATCH_SIZE = 1
-PRETRAINED_MODEL_DIR = "models/" + MODEL
-OUTPUT_DIR = "/dev/shm/output/" + MODEL + "_len" + str(MAX_SEQ_LENGTH) + "_bsz" + str(BATCH_SIZE)
 
 
 logging.basicConfig(
@@ -49,17 +42,17 @@ logger = logging.getLogger(__name__)
 
 class Classifier:
     def __init__(self):
-        self.tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_DIR, do_lower_case=False, tokenize_chinese_chars=False)
-        self.config    = BertConfig.from_pretrained(PRETRAINED_MODEL_DIR)
-        self.model     = BertEmojiClassification.from_pretrained(PRETRAINED_MODEL_DIR, config=self.config)
+        self.tokenizer = BertTokenizer.from_pretrained(config.MODEL_DIR, do_lower_case=False, tokenize_chinese_chars=False)
+        self.config    = BertConfig.from_pretrained(config.MODEL_DIR)
+        self.model     = BertEmojiClassification.from_pretrained(config.MODEL_DIR, config=self.config)
 
     def classify(self, text: str):
         input_strings = [text]
-        test_dataset = InputDataset(None, input_strings, self.tokenizer, mode="test", max_seq_length=MAX_SEQ_LENGTH)
+        test_dataset = InputDataset(None, input_strings, self.tokenizer, mode="test", max_seq_length=config.MAX_SEQ_LENGTH)
 
         training_args = TrainingArguments(
-            output_dir=OUTPUT_DIR,
-            per_device_eval_batch_size=BATCH_SIZE,
+            output_dir=config.OUTPUT_DIR,
+            per_device_eval_batch_size=config.BATCH_SIZE,
             no_cuda=False
         )
 
@@ -98,11 +91,11 @@ class Classifier:
         except json.JSONDecodeError:
             return "Invalid input JSON!"
 
-        test_dataset = InputDataset(None, input_strings, self.tokenizer, mode="test", max_seq_length=MAX_SEQ_LENGTH)
+        test_dataset = InputDataset(None, input_strings, self.tokenizer, mode="test", max_seq_length=config.MAX_SEQ_LENGTH)
 
         training_args = TrainingArguments(
-            output_dir=OUTPUT_DIR,
-            per_device_eval_batch_size=BATCH_SIZE,
+            output_dir=config.OUTPUT_DIR,
+            per_device_eval_batch_size=config.BATCH_SIZE,
             no_cuda=False
         )
 
