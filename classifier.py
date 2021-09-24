@@ -18,12 +18,10 @@
 import json
 import time
 import logging
-from typing import Callable, Dict
 
 import torch
 import numpy as np
-from sklearn.metrics import accuracy_score, f1_score
-from transformers import BertConfig, BertTokenizer, EvalPrediction, TrainingArguments
+from transformers import BertConfig, BertTokenizer, TrainingArguments
 
 import config
 from bert_emoji import BertEmojiClassification
